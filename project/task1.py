@@ -6,7 +6,7 @@ from networkx import MultiDiGraph
 
 
 @dataclass
-class GraphMetaData:
+class GraphMetadata:
     nodes_number: int
     edges_number: int
     labels: set[str]
@@ -22,9 +22,9 @@ def save_graph_to_dot(graph: MultiDiGraph, path: str) -> None:
     pydot_graph.write_raw(path)
 
 
-def get_graph_meta_data(graph_name: str) -> GraphMetaData:
+def get_graph_metadata(graph_name: str) -> GraphMetadata:
     graph = load_graph(graph_name)
-    return GraphMetaData(
+    return GraphMetadata(
         graph.number_of_nodes(),
         graph.number_of_edges(),
         set(cfpq.get_sorted_labels(graph)),

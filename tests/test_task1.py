@@ -2,20 +2,20 @@ import os
 
 import pytest
 
-from project.task1 import create_two_cycles_graph_and_save_to_dot, get_graph_meta_data
+from project.task1 import create_two_cycles_graph_and_save_to_dot, get_graph_metadata
 
 
-def test_get_graph_meta_data():
-    meta_data = get_graph_meta_data("bzip")
+def test_get_graph_metadata():
+    meta_data = get_graph_metadata("bzip")
 
     assert meta_data.nodes_number == 632
     assert meta_data.edges_number == 556
     assert meta_data.labels == {"a", "d"}
 
 
-def test_get_graph_meta_data_nonexistent_graph():
+def test_get_graph_metadata_nonexistent_graph():
     with pytest.raises(FileNotFoundError):
-        get_graph_meta_data("nonexistent_graph")
+        get_graph_metadata("nonexistent_graph")
 
 
 def test_create_two_cycles_graph_and_save_to_dot(tmp_path):
