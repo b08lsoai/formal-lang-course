@@ -34,7 +34,7 @@ class AdjacencyMatrixFA:
     def _build_boolean_decomposition(
         self, fa: NondeterministicFiniteAutomaton
     ) -> dict[Symbol, sp.csr_matrix]:
-
+        """Boolean adjacency matrix of the automaton, one per symbol."""
         states_number = self.states_number
 
         # Build each CSR matrix in a single call instead of element-wise.
@@ -131,6 +131,7 @@ class AdjacencyMatrixFA:
         return not np.any(reachable & self.final_states)
 
     def accepts(self, word: Iterable[Symbol]) -> bool:
+        """True iff some path from a start state to a final state is labeled by the word."""
         reachable = self.start_states.copy()
         is_empty_word = True
 
