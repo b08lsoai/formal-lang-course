@@ -116,11 +116,9 @@ class AdjacencyMatrixFA:
             sp.eye(states_number, format="csr", dtype=bool) + self._adjacency_matrix()
         ).astype(bool)
 
-        while True:
-            new_closure = (closure + closure @ closure).astype(bool)
-            if (new_closure != closure).nnz == 0:
-                return new_closure
-            closure = new_closure
+        for _ in range(max(1, (states_number - 1).bit_length())):
+            closure = (closure @ closure).astype(bool)
+        return closure
 
     def is_empty(self) -> bool:
         """True if no final state is reachable from any start state."""
