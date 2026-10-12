@@ -195,9 +195,6 @@ def tensor_based_rpq(
     final_nodes: set[int],
 ) -> set[tuple[int, int]]:
     """Vertex pairs (start, final) connected by a path in the regex language."""
-    if not start_nodes:
-        return set()
-
     from project.task2 import graph_to_nfa, regex_to_dfa
 
     regex_fa = AdjacencyMatrixFA(regex_to_dfa(regex))
