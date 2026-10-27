@@ -89,14 +89,6 @@ class WCNFGrammar:
             else:
                 self.binary_productions.setdefault((body[0], body[1]), set()).add(head)
 
-    def __len__(self) -> int:
-        """Number of productions, counting each head in a group separately."""
-        return (
-            len(self.epsilon_productions)
-            + sum(map(len, self.terminal_productions.values()))
-            + sum(map(len, self.binary_productions.values()))
-        )
-
 
 def hellings_based_cfpq(
     cfg: CFG,
