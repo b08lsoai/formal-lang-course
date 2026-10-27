@@ -64,6 +64,40 @@ def _binarize(cfg: CFG) -> CFG:
     return CFG(start_symbol=cfg.start_symbol, productions=productions)
 
 
+class WCNFGrammar:
+    """A CFG converted to weak Chomsky normal form and indexed by rule body.
+
+    ``epsilon_productions`` contains heads of ``A -> epsilon`` rules.
+    ``terminal_productions[a]`` contains heads of ``A -> a`` rules.
+    ``binary_productions[B, C]`` contains heads of ``A -> B C`` rules.
+    """
+
+    def __init__(self, cfg: CFG) -> None:
+        cfg = cfg_to_weak_normal_form(cfg)
+        self.start_symbol = cfg.start_symbol
+        self.variables = cfg.variables
+        self.epsilon_productions: set[Variable] = set()
+        self.terminal_productions: dict[str, set[Variable]] = {}
+        self.binary_productions: dict[tuple[Variable, Variable], set[Variable]] = {}
+
+        for production in cfg.productions:
+            head, body = production.head, production.body
+            if len(body) == 0:
+                self.epsilon_productions.add(head)
+            elif len(body) == 1:
+                self.terminal_productions.setdefault(body[0].value, set()).add(head)
+            else:
+                self.binary_productions.setdefault((body[0], body[1]), set()).add(head)
+
+    def __len__(self) -> int:
+        """Number of productions, counting each head in a group separately."""
+        return (
+            len(self.epsilon_productions)
+            + sum(map(len, self.terminal_productions.values()))
+            + sum(map(len, self.binary_productions.values()))
+        )
+
+
 def hellings_based_cfpq(
     cfg: CFG,
     graph: nx.DiGraph,
@@ -75,23 +109,10 @@ def hellings_based_cfpq(
 
     An empty ``start_nodes`` / ``final_nodes`` means every vertex.
     """
-    cfg = cfg_to_weak_normal_form(cfg)
+    grammar = WCNFGrammar(cfg)
 
     starts = set(graph.nodes) if not start_nodes else set(start_nodes)
     finals = set(graph.nodes) if not final_nodes else set(final_nodes)
-
-    term_prods: dict[str, set[Variable]] = defaultdict(set)
-    bin_prods: dict[tuple[Variable, Variable], set[Variable]] = defaultdict(set)
-    eps_prods: set[Variable] = set()
-
-    for production in cfg.productions:
-        body = production.body
-        if len(body) == 0:
-            eps_prods.add(production.head)
-        elif len(body) == 1:
-            term_prods[body[0].value].add(production.head)
-        else:
-            bin_prods[(body[0], body[1])].add(production.head)
 
     # reached[(i, j)] is the set of variables deriving some path i -> j.
     reached: dict[tuple[int, int], set[Variable]] = defaultdict(set)
@@ -111,11 +132,11 @@ def hellings_based_cfpq(
         queue.append((source, target, variable))
 
     for source, target, data in graph.edges(data=True):
-        for variable in term_prods.get(data["label"], ()):
+        for variable in grammar.terminal_productions.get(data["label"], ()):
             add(source, target, variable)
 
     for node in graph.nodes:
-        for variable in eps_prods:
+        for variable in grammar.epsilon_productions:
             add(node, node, variable)
 
     while queue:
@@ -124,16 +145,16 @@ def hellings_based_cfpq(
         # variable as the left operand: combine with every (target, k).
         for middle, right_operands in list(outgoing.get(target, {}).items()):
             for right in list(right_operands):
-                for head in bin_prods.get((variable, right), ()):
+                for head in grammar.binary_productions.get((variable, right), ()):
                     add(source, middle, head)
 
         # variable as the right operand: combine with every (k, source).
         for middle, left_operands in list(incoming.get(source, {}).items()):
             for left in list(left_operands):
-                for head in bin_prods.get((left, variable), ()):
+                for head in grammar.binary_productions.get((left, variable), ()):
                     add(middle, target, head)
 
-    start_symbol = cfg.start_symbol
+    start_symbol = grammar.start_symbol
     return {
         (source, target)
         for (source, target), variables in reached.items()
