@@ -1,7 +1,7 @@
 import cfpq_data as cfpq
 import networkx as nx
 
-from project.task2 import graph_to_nfa, regex_to_dfa
+from project.automata import graph_to_nfa, regex_to_dfa
 
 # ---------- DFA: build from regular expressions ----------
 

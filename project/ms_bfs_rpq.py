@@ -2,8 +2,8 @@ import numpy as np
 import scipy.sparse as sp
 from networkx import MultiDiGraph
 
-from project.task2 import graph_to_nfa, regex_to_dfa
-from project.task3 import AdjacencyMatrixFA
+from project.automata import graph_to_nfa, regex_to_dfa
+from project.matrix_automaton import AdjacencyMatrixFA
 
 
 def ms_bfs(first_fa: AdjacencyMatrixFA, second_fa: AdjacencyMatrixFA) -> sp.csr_matrix:

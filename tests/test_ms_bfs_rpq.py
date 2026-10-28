@@ -7,8 +7,9 @@ import pytest
 import scipy.sparse as sp
 from pyformlang.finite_automaton import NondeterministicFiniteAutomaton
 
-from project.task3 import AdjacencyMatrixFA, tensor_based_rpq
-from project.task4 import ms_bfs, ms_bfs_based_rpq
+from project.matrix_automaton import AdjacencyMatrixFA
+from project.ms_bfs_rpq import ms_bfs, ms_bfs_based_rpq
+from project.tensor_rpq import tensor_based_rpq
 
 
 def _graph(edges: list[tuple[int, int, str]]) -> nx.MultiDiGraph:
