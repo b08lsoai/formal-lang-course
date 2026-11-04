@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from project.task1 import create_two_cycles_graph_and_save_to_dot, get_graph_metadata
+from project.graphs import create_two_cycles_graph_and_save_to_dot, get_graph_metadata
 
 
 def test_get_graph_metadata():
