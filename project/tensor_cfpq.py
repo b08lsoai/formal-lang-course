@@ -5,7 +5,6 @@ from pyformlang.rsa import RecursiveAutomaton
 
 from project.automata import graph_to_nfa
 from project.matrix_automaton import AdjacencyMatrixFA
-from project.ms_bfs_rpq import ms_bfs
 
 
 def tensor_based_cfpq(
@@ -24,36 +23,48 @@ def tensor_based_cfpq(
     starts = set(graph.nodes) if not start_nodes else set(start_nodes)
     finals = set(graph.nodes) if not final_nodes else set(final_nodes)
 
-    box_fas = {label: AdjacencyMatrixFA(box.dfa) for label, box in rsm.boxes.items()}
-
-    # Intermediate paths may begin anywhere, regardless of the output filters.
+    # Intermediate paths may begin anywhere, so every relation is all-pairs.
     graph_fa = AdjacencyMatrixFA(graph_to_nfa(graph, set(), set()))
     graph_size = graph_fa.states_number
-    graph_matrices = graph_fa.boolean_decomposition
-    # Box labels denote inferred calls, not original graph edges.
-    for label in rsm.boxes:
-        graph_matrices[label] = sp.csr_matrix((graph_size, graph_size), dtype=bool)
-    graph_fa.alphabet.update(rsm.boxes)
+    terminals = graph_fa.boolean_decomposition
+
+    box_fas = {label: AdjacencyMatrixFA(box.dfa) for label, box in rsm.boxes.items()}
+    relations = {
+        label: sp.csr_matrix((graph_size, graph_size), dtype=bool) for label in box_fas
+    }
 
     changed = True
     while changed:
         changed = False
         for label, box_fa in box_fas.items():
             box_size = box_fa.states_number
-            visited = ms_bfs(graph_fa, box_fa)
-            updated = graph_matrices[label]
-            # Each row block corresponds to one graph source; select box exits.
-            for final in np.flatnonzero(box_fa.final_states):
-                updated = updated + visited[final::box_size, :]
-            if updated.nnz != graph_matrices[label].nnz:
+            # Product states are (graph vertex, box state).
+            closure = sp.eye(graph_size * box_size, format="csr", dtype=bool)
+            for symbol, box_matrix in box_fa.boolean_decomposition.items():
+                relation = relations.get(symbol, terminals.get(symbol))
+                if relation is not None and relation.nnz:
+                    closure = closure + sp.kron(relation, box_matrix, format="csr")
+
+            # The identity also accounts for empty paths through a box.
+            previous_nnz = -1
+            while closure.nnz != previous_nnz:
+                previous_nnz = closure.nnz
+                closure = closure @ closure
+
+            updated = relations[label]
+            for start in np.flatnonzero(box_fa.start_states):
+                for final in np.flatnonzero(box_fa.final_states):
+                    updated = updated + closure[start::box_size, final::box_size]
+
+            if updated.nnz != relations[label].nnz:
                 # Later boxes in this pass can already use the new relation.
-                graph_matrices[label] = updated
+                relations[label] = updated
                 changed = True
 
-    rows, columns = graph_matrices[rsm.initial_label].nonzero()
-    nodes = graph_fa.index_to_state
+    rows, columns = relations[rsm.initial_label].nonzero()
+    node_values = [graph_fa.index_to_state[i].value for i in range(graph_size)]
     return {
-        (nodes[source].value, nodes[target].value)
-        for source, target in zip(rows, columns)
-        if nodes[source].value in starts and nodes[target].value in finals
+        (node_values[source], node_values[target])
+        for source, target in zip(rows.tolist(), columns.tolist())
+        if node_values[source] in starts and node_values[target] in finals
     }
