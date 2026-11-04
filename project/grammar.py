@@ -1,4 +1,5 @@
 from pyformlang.cfg import CFG, Production, Terminal, Variable
+from pyformlang.rsa import RecursiveAutomaton
 
 
 def cfg_to_weak_normal_form(cfg: CFG) -> CFG:
@@ -85,3 +86,15 @@ class WCNFGrammar:
                 self.terminal_productions.setdefault(body[0].value, set()).add(head)
             else:
                 self.binary_productions.setdefault((body[0], body[1]), set()).add(head)
+
+
+def cfg_to_rsm(cfg: CFG) -> RecursiveAutomaton:
+    """Converts a CFG to a RSM."""
+    return RecursiveAutomaton.from_text(
+        cfg.to_text(), start_symbol=cfg.start_symbol.value
+    )
+
+
+def ebnf_to_rsm(ebnf: str) -> RecursiveAutomaton:
+    """Converts an EBNF string to a RSM."""
+    return RecursiveAutomaton.from_text(ebnf)
