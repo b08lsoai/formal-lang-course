@@ -13,9 +13,9 @@ RSMState = tuple[Symbol, State]
 class GSSNode:
     """A shared call (nonterminal, graph vertex) and its continuations."""
 
-    def __init__(self, label: Symbol, vertex: int) -> None:
+    def __init__(self, label: Symbol, start_vertex: int) -> None:
         self.label = label
-        self.vertex = vertex
+        self.start_vertex = start_vertex
         self.edges: set[tuple[RSMState, GSSNode]] = set()
         self.popped: set[int] = set()
 
@@ -40,7 +40,7 @@ class GSSNode:
 
 class Descriptor(NamedTuple):
     slot: RSMState
-    stack: GSSNode
+    gss_node: GSSNode
     vertex: int
 
 
@@ -78,11 +78,11 @@ def gll_based_cfpq(
     queue: deque[Descriptor] = deque()  # descriptors waiting to be processed
     seen: set[Descriptor] = set()  # all descriptors already created
 
-    def get_node(label: Symbol, vertex: int) -> GSSNode:
-        node = gss.get((label, vertex))
+    def get_node(label: Symbol, start_vertex: int) -> GSSNode:
+        node = gss.get((label, start_vertex))
         if node is None:
-            node = GSSNode(label, vertex)
-            gss[(label, vertex)] = node
+            node = GSSNode(label, start_vertex)
+            gss[(label, start_vertex)] = node
         return node
 
     def add(descriptor: Descriptor) -> None:
@@ -91,34 +91,34 @@ def gll_based_cfpq(
             queue.append(descriptor)
 
     initial_calls = [get_node(rsm.initial_label, source) for source in starts]
-    for stack in initial_calls:
-        for state in box_starts[stack.label]:
-            add(Descriptor((stack.label, state), stack, stack.vertex))
+    for gss_node in initial_calls:
+        for state in box_starts[gss_node.label]:
+            add(Descriptor((gss_node.label, state), gss_node, gss_node.start_vertex))
 
     while queue:
-        slot, stack, vertex = queue.popleft()
+        slot, gss_node, vertex = queue.popleft()
         label, state = slot
         for symbol, next_state in box_transitions[label].get(state, {}).items():
             if symbol not in box_labels:
                 # Terminal: advance both the graph vertex and the RSM state.
                 for target in graph_transitions.get(vertex, {}).get(symbol, ()):
-                    add(Descriptor((label, next_state), stack, target))
+                    add(Descriptor((label, next_state), gss_node, target))
             else:
                 # Call: save the continuation and enter the called box.
                 callee = get_node(symbol, vertex)
-                for descriptor in callee.add_edge((label, next_state), stack):
+                for descriptor in callee.add_edge((label, next_state), gss_node):
                     add(descriptor)
                 for entry in box_starts[symbol]:
                     add(Descriptor((symbol, entry), callee, vertex))
 
         # Return: final states may also have outgoing transitions.
         if state in box_finals[label]:
-            for descriptor in stack.pop(vertex):
+            for descriptor in gss_node.pop(vertex):
                 add(descriptor)
 
     return {
-        (stack.vertex, target)
-        for stack in initial_calls
-        for target in stack.popped
+        (gss_node.start_vertex, target)
+        for gss_node in initial_calls
+        for target in gss_node.popped
         if target in finals
     }
